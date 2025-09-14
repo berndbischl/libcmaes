@@ -24,35 +24,37 @@
 
 #include <libcmaes/libcmaes_config.h>
 
-#ifdef HAVE_GLOG // HAVE_LIB_GLOG
+#if defined(HAVE_GLOG)
+
 #include <glog/logging.h>
-#else
+
+#elif defined(LIBCMAES_LOG_TO_R)
+
 #include <ostream>
 #include <streambuf>
 #include <string>
 
-extern "C" void Rprintf(const char* format, ...);
+extern "C" void Rprintf(const char *format, ...);
 
-namespace libcmaes
-{
-  static std::string INFO="INFO";
-  static std::string WARNING="WARNING";
-  static std::string ERROR="ERROR";
-  static std::string FATAL="FATAL";
+namespace libcmaes {
+static std::string INFO = "INFO";
+static std::string WARNING = "WARNING";
+static std::string ERROR = "ERROR";
+static std::string FATAL = "FATAL";
 
-  static std::ostream nullstream(0);
+static std::ostream nullstream(0);
 
-  // Minimal streambuf that forwards output directly to Rprintf (unbuffered)
-  class RPrintfBuf : public std::streambuf {
-  public:
-    using int_type = std::streambuf::int_type;
-    using traits_type = std::streambuf::traits_type;
+// Minimal streambuf that forwards output directly to Rprintf (unbuffered)
+class RPrintfBuf : public std::streambuf {
+public:
+  using int_type = std::streambuf::int_type;
+  using traits_type = std::streambuf::traits_type;
 
 protected:
   // Write a block of characters. iostreams prefer this path for operator<< of strings
   // and formatted output. We forward the entire chunk to Rprintf in one call.
   // Returning 'n' tells iostreams the full block was consumed.
-  std::streamsize xsputn(const char* s, std::streamsize n) override {
+  std::streamsize xsputn(const char *s, std::streamsize n) override {
     if (n > 0) Rprintf("%.*s", static_cast<int>(n), s);
     return n;
   }
@@ -76,22 +78,48 @@ protected:
   int sync() override { return 0; }
 };
 
-      // Global ostream that uses RPrintfBuf
-  static RPrintfBuf rprintf_buf;
-  static std::ostream rcout(&rprintf_buf);
+// Global ostream that uses RPrintfBuf
+static RPrintfBuf rprintf_buf;
+static std::ostream rcout(&rprintf_buf);
 
- inline std::ostream& LOG(const std::string &severity,std::ostream &out=rcout)
-{
+inline std::ostream &LOG(const std::string &severity, std::ostream &out = rcout) {
   out << severity << " - ";
   return out;
 }
 
-inline std::ostream& LOG_IF(const std::string &severity,const bool &condition,std::ostream &out=rcout)
-{
+inline std::ostream &LOG_IF(const std::string &severity, const bool &condition, std::ostream &out = rcout) {
   if (condition)
-    return LOG(severity,out);
-  else return nullstream;
+    return LOG(severity, out);
+  else
+    return nullstream;
 }
+} // namespace libcmaes
+
+#else
+
+#include <iostream>
+
+namespace libcmaes {
+static std::string INFO = "INFO";
+static std::string WARNING = "WARNING";
+static std::string ERROR = "ERROR";
+static std::string FATAL = "FATAL";
+
+static std::ostream nullstream(0);
+
+inline std::ostream &LOG(const std::string &severity, std::ostream &out = std::cout) {
+  out << severity << " - ";
+  return out;
 }
+
+inline std::ostream &LOG_IF(const std::string &severity, const bool &condition, std::ostream &out = std::cout) {
+  if (condition)
+    return LOG(severity, out);
+  else
+    return nullstream;
+}
+} // namespace libcmaes
+
 #endif
+
 #endif
